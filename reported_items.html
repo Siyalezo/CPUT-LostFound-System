@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Reported Items - CPUT Lost & Found</title>
+  <link rel="stylesheet" href="../public/css/styles.css" />
+</head>
+<body>
+  <header>
+    <div class="menu-icon">&#9776;</div>
+    <h1 class="header-title">CPUT LOST & FOUND</h1>
+    <div class="search-profile">
+      <input type="text" placeholder="Search..." class="search-input" />
+      <div class="profile-icon">&#128100;</div>
+    </div>
+  </header>
+
+  <main class="dashboard-container">
+    <aside class="sidebar">
+      <nav>
+        <ul>
+          <li><a href="dashboard.html">Dashboard</a></li>
+          <li><a href="report_item.html">Report Lost/Found</a></li>
+          <li><a href="reported_items.html" class="active">Reported Items</a></li>
+          <li><a href="my_posts.html">My Posts</a></li>
+          <li><a href="settings.html">Settings</a></li>
+          <li><a href="#" id="logoutButton">Logout</a></li>
+        </ul>
+      </nav>
+    </aside>
+
+    <section class="dashboard-content">
+      <h2>All Reported Items</h2>
+
+      <div class="filters-section">
+        <div class="filter-group">
+          <label for="filterItemType">Type:</label>
+          <select id="filterItemType">
+            <option value="">All</option>
+            <option value="Lost">Lost</option>
+            <option value="Found">Found</option>
+          </select>
+        </div>
+        <div class="filter-group">
+          <label for="filterCategory">Category:</label>
+          <select id="filterCategory">
+            <option value="">All Categories</option>
+            <option value="Electronics">Electronics</option>
+            <option value="Documents">Documents</option>
+            <option value="Books">Books</option>
+            <option value="Clothing">Clothing</option>
+            <option value="Accessories">Accessories</option>
+            <option value="Keys">Keys</option>
+            <option value="Other">Other</option>
+          </select>
+        </div>
+        <div class="filter-group">
+          <label for="filterStatus">Status:</label>
+          <select id="filterStatus">
+            <option value="">All Statuses</option>
+            <option value="Active">Active</option>
+            <option value="Resolved">Resolved</option>
+          </select>
+        </div>
+        <div class="filter-group">
+          <label for="filterLocation">Location:</label>
+          <input type="text" id="filterLocation" placeholder="Filter by location" />
+        </div>
+        <button class="apply-filters-button">Apply Filters</button>
+      </div>
+
+      <div class="items-list-container">
+        <table class="items-table full-width-table">
+          <thead>
+            <tr>
+              <th>Image</th>
+              <th>Title</th>
+              <th>Description</th>
+              <th>Type</th>
+              <th>Date</th>
+              <th>Location</th>
+              <th>Category</th>
+              <th>Status</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody id="reportedItemsBody"></tbody>
+        </table>
+      </div>
+
+      <div class="pagination-controls">
+        <button disabled>&laquo; Previous</button>
+        <span>Page 1 of 1</span>
+        <button disabled>Next &raquo;</button>
+      </div>
+    </section>
+  </main>
+
+  <script>
+    document.getElementById('logoutButton').addEventListener('click', () => {
+      alert('Logged out. Redirecting to login page.');
+      localStorage.clear();
+      window.location.href = 'index.html';
+    });
+
+    document.addEventListener('DOMContentLoaded', () => {
+      const reportedItemsBody = document.getElementById('reportedItemsBody');
+      const filters = {
+        type: document.getElementById('filterItemType'),
+        category: document.getElementById('filterCategory'),
+        status: document.getElementById('filterStatus'),
+        location: document.getElementById('filterLocation'),
+        applyButton: document.querySelector('.apply-filters-button')
+      };
+
+      async function fetchAndDisplayItems() {
+        reportedItemsBody.innerHTML = '<tr><td colspan="9">Loading items...</td></tr>';
+
+        try {
+          const lostResponse = await fetch('http://localhost:3000/lost');
+          const foundResponse = await fetch('http://localhost:3000/found');
+
+          if (!lostResponse.ok || !foundResponse.ok) {
+            throw new Error('Failed to fetch items from the server.');
+          }
+
+          const lostItems = await lostResponse.json();
+          const foundItems = await foundResponse.json();
+          const allItems = [...lostItems, ...foundItems];
+
+          const filtered = allItems.filter(item => {
+            return (
+              (!filters.type.value || item.ItemType === filters.type.value) &&
+              (!filters.category.value || item.CategoryName === filters.category.value) &&
+              (!filters.status.value || item.CurrentStatus === filters.status.value) &&
+              (!filters.location.value ||
+                (item.LocationName &&
+                  item.LocationName.toLowerCase().includes(filters.location.value.toLowerCase())))
+            );
+          });
+
+          reportedItemsBody.innerHTML = '';
+
+          if (filtered.length === 0) {
+            reportedItemsBody.innerHTML =
+              '<tr><td colspan="9" style="text-align:center; padding:20px;">No items match your criteria.</td></tr>';
+            return;
+          }
+
+          filtered.forEach(item => {
+            const row = reportedItemsBody.insertRow();
+            row.innerHTML = `
+              <td><img src="${item.ImageURL || 'https://via.placeholder.com/50'}" alt="Item Image" class="item-thumbnail" onerror="this.src='https://via.placeholder.com/50';" /></td>
+              <td>${item.Title}</td>
+              <td>${item.Description}</td>
+              <td>${item.ItemType}</td>
+              <td>${new Date(item.DateLostFound).toLocaleDateString()}</td>
+              <td>${item.LocationName || 'N/A'}</td>
+              <td>${item.CategoryName || 'N/A'}</td>
+              <td>${item.CurrentStatus}</td>
+              <td>
+                <button class="action-button view-details" data-id="${item.ItemID}">View</button>
+              </td>
+            `;
+          });
+
+          // View button placeholder
+          document.querySelectorAll('.view-details').forEach(btn => {
+            btn.addEventListener('click', () => {
+              alert(`Viewing Item ID: ${btn.dataset.id}`);
+              // window.location.href = `item_details.html?id=${btn.dataset.id}`;
+            });
+          });
+
+        } catch (error) {
+          console.error('Error fetching items:', error);
+          reportedItemsBody.innerHTML =
+            '<tr><td colspan="9" style="color:red; text-align:center; padding:20px;">Error loading items. Please check the server.</td></tr>';
+        }
+      }
+
+      filters.applyButton.addEventListener('click', fetchAndDisplayItems);
+      filters.type.addEventListener('change', fetchAndDisplayItems);
+      filters.category.addEventListener('change', fetchAndDisplayItems);
+      filters.status.addEventListener('change', fetchAndDisplayItems);
+      // filters.location.addEventListener('input', fetchAndDisplayItems); // Optional: live filtering
+
+      fetchAndDisplayItems();
+    });
+  </script>
+</body>
+</html>

@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>CPUT Lost & Found - Login/Register</title>
+    <link rel="stylesheet" href="../public/css/styles.css" />
+</head>
+<body>
+    <header>
+        <div class="menu-icon">&#9776;</div>
+        <h1 class="header-title">CPUT LOST & FOUND</h1>
+        <div class="search-profile">
+            <input type="text" placeholder="Search..." class="search-input" disabled />
+            <div class="profile-icon">&#128100;</div>
+        </div>
+    </header>
+
+    <main class="container">
+        <div class="form-card login-card">
+            <h2>Login</h2>
+            <form id="loginForm">
+                <input type="text" id="loginUsernameEmail" placeholder="Username or Email" required />
+                <input type="password" id="loginPassword" placeholder="Password" required />
+                <button type="submit">Login</button>
+            </form>
+        </div>
+
+        <div class="welcome-card">
+            <h2>Welcome to CPUT Lost & Found</h2>
+            <p>This system allows students and staff to report, search, and recover lost or found items securely and efficiently.</p>
+        </div>
+
+        <div class="form-card register-card">
+            <h2>Register</h2>
+            <form id="registerForm">
+                <input type="text" id="registerUserId" placeholder="CPUT Student/Staff ID (e.g., S222680776)" required />
+                <input type="text" id="registerName" placeholder="Full Name" required />
+                <input type="email" id="registerEmail" placeholder="CPUT Email (@cput.ac.za/@mycput.ac.za)" required />
+                <input type="tel" id="registerPhoneNumber" placeholder="Phone Number (Optional, 10 digits)" pattern="[0-9]{10}" />
+                <input type="password" id="registerPassword" placeholder="Password" required />
+                <button type="submit">Register</button>
+            </form>
+        </div>
+    </main>
+
+    <script>
+        // Login
+        document.getElementById('loginForm').addEventListener('submit', async (event) => {
+            event.preventDefault();
+            const usernameEmail = document.getElementById('loginUsernameEmail').value.trim();
+            const password = document.getElementById('loginPassword').value;
+
+            try {
+                const response = await fetch('http://localhost:3000/login', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ usernameOrEmail: usernameEmail, password }),
+                });
+
+                const result = await response.json();
+
+                if (response.ok) {
+                    alert(result.message);
+                    localStorage.setItem('loggedInUserId', result.userId);
+                    localStorage.setItem('loggedInUserName', result.name);
+                    localStorage.setItem('loggedInUserRole', result.role);
+                    window.location.href = 'dashboard.html';
+                } else {
+                    alert(result || 'Login failed.');
+                }
+            } catch (error) {
+                console.error('Login error:', error);
+                alert('An error occurred during login. Please try again.');
+            }
+        });
+
+        // Register
+        document.getElementById('registerForm').addEventListener('submit', async (event) => {
+            event.preventDefault();
+            const userId = document.getElementById('registerUserId').value.trim();
+            const name = document.getElementById('registerName').value.trim();
+            const email = document.getElementById('registerEmail').value.trim();
+            const phoneNumber = document.getElementById('registerPhoneNumber').value.trim();
+            const password = document.getElementById('registerPassword').value;
+
+            // Optional: Validate email domain here again for UX before sending
+            if (!email.endsWith('@cput.ac.za') && !email.endsWith('@mycput.ac.za')) {
+                alert('Invalid email domain. Use @cput.ac.za or @mycput.ac.za.');
+                return;
+            }
+
+            const userData = { userId, name, email, phoneNumber, password };
+
+            try {
+                const response = await fetch('http://localhost:3000/register', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(userData),
+                });
+
+                const message = await response.text();
+
+                if (response.ok) {
+                    alert('Registration successful: ' + message);
+                    document.getElementById('registerForm').reset();
+                } else {
+                    alert('Registration failed: ' + message);
+                }
+            } catch (error) {
+                console.error('Registration error:', error);
+                alert('An error occurred during registration. Please try again.');
+            }
+        });
+    </script>
+</body>
+</html>

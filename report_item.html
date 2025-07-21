@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Report Item - CPUT Lost & Found</title>
+  <link rel="stylesheet" href="../public/css/styles.css" />
+</head>
+
+<body>
+  <header>
+    <div class="menu-icon">&#9776;</div>
+    <h1 class="header-title">CPUT LOST & FOUND</h1>
+    <div class="search-profile">
+      <input type="text" placeholder="Search..." class="search-input" />
+      <div class="profile-icon">&#128100;</div>
+    </div>
+  </header>
+
+  <main class="dashboard-container">
+    <aside class="sidebar">
+      <nav>
+        <ul>
+          <li><a href="dashboard.html">Dashboard</a></li>
+          <li><a href="report_item.html" class="active">Report Lost/Found</a></li>
+          <li><a href="reported_items.html">Reported Items</a></li>
+          <li><a href="my_posts.html">My Posts</a></li>
+          <li><a href="settings.html">Settings</a></li>
+          <li><a href="#" id="logoutButton">Logout</a></li>
+        </ul>
+      </nav>
+    </aside>
+
+    <section class="dashboard-content">
+      <h2>Report a Lost or Found Item</h2>
+      <div class="report-item-card">
+        <form id="reportItemForm">
+          <div class="form-group">
+            <label for="itemType">Item Status:</label>
+            <select id="itemType" required>
+              <option value="">Select status</option>
+              <option value="Lost">Lost</option>
+              <option value="Found">Found</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label for="itemTitle">Item Title:</label>
+            <input type="text" id="itemTitle" placeholder="e.g., Blue CPUT Student Card" required />
+          </div>
+
+          <div class="form-group">
+            <label for="itemDescription">Description:</label>
+            <textarea id="itemDescription" rows="5" placeholder="Provide detailed description..." required></textarea>
+          </div>
+
+          <div class="form-group">
+            <label for="dateLostFound">Date Lost/Found:</label>
+            <input type="date" id="dateLostFound" required />
+          </div>
+
+          <div class="form-group">
+            <label for="itemLocation">Location:</label>
+            <select id="itemLocation" required>
+              <option value="">Select location</option>
+              <option value="1">Library</option>
+              <option value="2">Cafeteria</option>
+              <option value="3">Engineering Building</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label for="itemCategory">Category:</label>
+            <select id="itemCategory" required>
+              <option value="">Select category</option>
+              <option value="1">Electronics</option>
+              <option value="2">Documents</option>
+              <option value="3">Books</option>
+              <option value="4">Clothing</option>
+              <option value="5">Accessories</option>
+              <option value="6">Keys</option>
+              <option value="7">Other</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label for="itemImage">Image URL (Optional):</label>
+            <input type="url" id="itemImage" placeholder="e.g., http://example.com/item.jpg" />
+          </div>
+
+          <button type="submit" class="submit-button">Submit Report</button>
+        </form>
+      </div>
+    </section>
+  </main>
+
+  <script>
+    document.getElementById('logoutButton').addEventListener('click', () => {
+      localStorage.removeItem('loggedInUserId');
+      localStorage.removeItem('loggedInUserName');
+      alert('Logged out. Redirecting to login page.');
+      window.location.href = 'index.html';
+    });
+
+    document.getElementById('reportItemForm').addEventListener('submit', async function (event) {
+      event.preventDefault();
+
+      const itemType = document.getElementById('itemType').value;
+      const title = document.getElementById('itemTitle').value.trim();
+      const description = document.getElementById('itemDescription').value.trim();
+      const dateLostFound = document.getElementById('dateLostFound').value;
+      const locationId = parseInt(document.getElementById('itemLocation').value);
+      const categoryId = parseInt(document.getElementById('itemCategory').value);
+      const imageUrl = document.getElementById('itemImage').value.trim();
+
+      const reportedByUserId = localStorage.getItem('loggedInUserId');
+      if (!reportedByUserId) {
+        alert('⚠️ You must be logged in to report an item.');
+        return;
+      }
+
+      if (!itemType || !title || !description || !dateLostFound || !locationId || !categoryId) {
+        alert('Please fill in all required fields.');
+        return;
+      }
+
+      const itemData = {
+        title,
+        description,
+        date_lost_found: dateLostFound,
+        reported_by_user_id: reportedByUserId,
+        location_id: locationId,
+        category_id: categoryId,
+        image_url: imageUrl
+      };
+
+      const endpoint = itemType === 'Lost'
+        ? 'http://localhost:3000/lost'
+        : 'http://localhost:3000/found';
+
+      try {
+        const response = await fetch(endpoint, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(itemData)
+        });
+
+        const message = await response.text();
+        if (response.ok) {
+          alert(`${itemType} item reported successfully!`);
+          document.getElementById('reportItemForm').reset();
+        } else {
+          alert(`Failed to report ${itemType} item: ${message}`);
+        }
+      } catch (error) {
+        console.error('Error reporting item:', error);
+        alert('❌ An unexpected error occurred. Please try again.');
+      }
+    });
+  </script>
+</body>
+</html>

@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>My Posts - CPUT Lost & Found</title>
+  <link rel="stylesheet" href="../public/css/styles.css" />
+</head>
+
+<body>
+  <header>
+    <div class="menu-icon">&#9776;</div>
+    <h1 class="header-title">CPUT LOST & FOUND</h1>
+    <div class="search-profile">
+      <input type="text" placeholder="Search..." class="search-input" />
+      <div class="profile-icon">&#128100;</div>
+    </div>
+  </header>
+
+  <main class="dashboard-container">
+    <aside class="sidebar">
+      <nav>
+        <ul>
+          <li><a href="dashboard.html">Dashboard</a></li>
+          <li><a href="report_item.html">Report Lost/Found</a></li>
+          <li><a href="reported_items.html">Reported Items</a></li>
+          <li><a href="my_posts.html" class="active">My Posts</a></li>
+          <li><a href="settings.html">Settings</a></li>
+          <li><a href="#" id="logoutButton">Logout</a></li>
+        </ul>
+      </nav>
+    </aside>
+
+    <section class="dashboard-content">
+      <h2>My Reported Items</h2>
+
+      <div class="filters-section">
+        <div class="filter-group">
+          <label for="filterMyItemType">Type:</label>
+          <select id="filterMyItemType">
+            <option value="">All</option>
+            <option value="Lost">Lost</option>
+            <option value="Found">Found</option>
+          </select>
+        </div>
+        <div class="filter-group">
+          <label for="filterMyCategory">Category:</label>
+          <select id="filterMyCategory">
+            <option value="">All Categories</option>
+            <option value="Electronics">Electronics</option>
+            <option value="Documents">Documents</option>
+            <option value="Books">Books</option>
+            <option value="Clothing">Clothing</option>
+            <option value="Accessories">Accessories</option>
+            <option value="Keys">Keys</option>
+            <option value="Other">Other</option>
+          </select>
+        </div>
+        <div class="filter-group">
+          <label for="filterMyStatus">Status:</label>
+          <select id="filterMyStatus">
+            <option value="">All Statuses</option>
+            <option value="Active">Active</option>
+            <option value="Resolved">Resolved</option>
+          </select>
+        </div>
+        <div class="filter-group">
+          <label for="filterMyLocation">Location:</label>
+          <input type="text" id="filterMyLocation" placeholder="Filter by location" />
+        </div>
+        <button class="apply-filters-button">Apply Filters</button>
+      </div>
+
+      <div class="items-list-container">
+        <table class="items-table full-width-table">
+          <thead>
+            <tr>
+              <th>Image</th>
+              <th>Title</th>
+              <th>Description</th>
+              <th>Type</th>
+              <th>Date</th>
+              <th>Location</th>
+              <th>Category</th>
+              <th>Status</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody id="myItemsBody"></tbody>
+        </table>
+      </div>
+
+      <div class="pagination-controls">
+        <button disabled>&laquo; Previous</button>
+        <span>Page 1 of 1</span>
+        <button disabled>Next &raquo;</button>
+      </div>
+    </section>
+  </main>
+
+  <script>
+    document.getElementById('logoutButton').addEventListener('click', () => {
+      localStorage.clear();
+      alert('Logged out. Redirecting to login page.');
+      window.location.href = 'index.html';
+    });
+
+    document.addEventListener('DOMContentLoaded', () => {
+      const userId = localStorage.getItem('loggedInUserId');
+      if (!userId) {
+        alert('You are not logged in.');
+        return (window.location.href = 'index.html');
+      }
+
+      const myItemsBody = document.getElementById('myItemsBody');
+      const filters = {
+        type: document.getElementById('filterMyItemType'),
+        category: document.getElementById('filterMyCategory'),
+        status: document.getElementById('filterMyStatus'),
+        location: document.getElementById('filterMyLocation'),
+        applyButton: document.querySelector('.apply-filters-button')
+      };
+
+      async function fetchAndDisplayMyItems() {
+        myItemsBody.innerHTML = '<tr><td colspan="9">Loading your items...</td></tr>';
+        try {
+          const response = await fetch(`http://localhost:3000/my-items/${userId}`);
+          const items = await response.json();
+
+          const filtered = items.filter(item => {
+            return (
+              (!filters.type.value || item.ItemType === filters.type.value) &&
+              (!filters.category.value || item.CategoryName === filters.category.value) &&
+              (!filters.status.value || item.CurrentStatus === filters.status.value) &&
+              (!filters.location.value ||
+                (item.LocationName &&
+                  item.LocationName.toLowerCase().includes(filters.location.value.toLowerCase())))
+            );
+          });
+
+          myItemsBody.innerHTML = '';
+
+          if (filtered.length === 0) {
+            myItemsBody.innerHTML =
+              '<tr><td colspan="9" style="text-align: center;">No items match your filters.</td></tr>';
+            return;
+          }
+
+          filtered.forEach(item => {
+            const row = myItemsBody.insertRow();
+            row.innerHTML = `
+              <td><img src="${item.ImageURL || 'https://via.placeholder.com/50'}" class="item-thumbnail" onerror="this.src='https://via.placeholder.com/50';" /></td>
+              <td>${item.Title}</td>
+              <td>${item.Description}</td>
+              <td>${item.ItemType}</td>
+              <td>${new Date(item.DateLostFound).toLocaleDateString()}</td>
+              <td>${item.LocationName || 'N/A'}</td>
+              <td>${item.CategoryName || 'N/A'}</td>
+              <td>${item.CurrentStatus}</td>
+              <td>
+                <button class="action-button view-details" data-id="${item.ItemID}">View</button>
+                ${item.CurrentStatus === 'Active' ? `<button class="action-button mark-resolved" data-id="${item.ItemID}">Mark Resolved</button>` : ''}
+                <button class="action-button edit-item" data-id="${item.ItemID}">Edit</button>
+              </td>
+            `;
+          });
+
+          // Add button events after rendering
+          document.querySelectorAll('.mark-resolved').forEach(btn => {
+            btn.addEventListener('click', () => markItemAsResolved(btn.dataset.id));
+          });
+
+          document.querySelectorAll('.view-details').forEach(btn => {
+            btn.addEventListener('click', () => viewItemDetails(btn.dataset.id));
+          });
+
+          document.querySelectorAll('.edit-item').forEach(btn => {
+            btn.addEventListener('click', () => editItem(btn.dataset.id));
+          });
+
+        } catch (error) {
+          console.error('Error fetching items:', error);
+          myItemsBody.innerHTML =
+            '<tr><td colspan="9" style="color:red; text-align:center;">Failed to load your items.</td></tr>';
+        }
+      }
+
+      async function markItemAsResolved(itemId) {
+        if (!confirm('Are you sure you want to mark this item as Resolved?')) return;
+
+        try {
+          const response = await fetch(`http://localhost:3000/items/${itemId}/status`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ status: 'Resolved' })
+          });
+
+          if (!response.ok) {
+            const errorMsg = await response.text();
+            throw new Error(errorMsg);
+          }
+
+          alert('Item marked as Resolved.');
+          fetchAndDisplayMyItems();
+        } catch (error) {
+          alert('❌ Error: ' + error.message);
+        }
+      }
+
+      function viewItemDetails(itemId) {
+        alert(`View Item ID: ${itemId} (You can link to a details page here.)`);
+        // e.g., window.location.href = `item_details.html?id=${itemId}`;
+      }
+
+      function editItem(itemId) {
+        alert(`Edit Item ID: ${itemId} (You can link to an edit page here.)`);
+        // e.g., window.location.href = `edit_item.html?id=${itemId}`;
+      }
+
+      // Filters
+      filters.applyButton.addEventListener('click', fetchAndDisplayMyItems);
+      filters.type.addEventListener('change', fetchAndDisplayMyItems);
+      filters.category.addEventListener('change', fetchAndDisplayMyItems);
+      filters.status.addEventListener('change', fetchAndDisplayMyItems);
+      filters.location.addEventListener('input', fetchAndDisplayMyItems);
+
+      fetchAndDisplayMyItems();
+    });
+  </script>
+</body>
+
+</html>

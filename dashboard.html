@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Dashboard - CPUT Lost & Found</title>
+  <link rel="stylesheet" href="../public/css/styles.css" />
+</head>
+<body>
+  <header>
+    <div class="menu-icon">&#9776;</div>
+    <h1 class="header-title">CPUT LOST & FOUND</h1>
+    <div class="search-profile">
+      <input type="text" placeholder="Search..." class="search-input" />
+      <div class="profile-icon">&#128100;</div>
+    </div>
+  </header>
+
+  <main class="dashboard-container">
+    <aside class="sidebar">
+      <nav>
+        <ul>
+          <li><a href="dashboard.html" class="active">Dashboard</a></li>
+          <li><a href="report_item.html">Report Lost/Found</a></li>
+          <li><a href="reported_items.html">Reported Items</a></li>
+          <li><a href="my_posts.html">My Posts</a></li>
+          <li><a href="settings.html">Settings</a></li>
+          <li><a href="#" id="logoutButton">Logout</a></li>
+        </ul>
+      </nav>
+    </aside>
+
+    <section class="dashboard-content">
+      <div class="welcome-banner">
+        <h2>Welcome, <span id="userName">Guest</span>!</h2>
+        <p>Track and manage lost and found items within the CPUT community.</p>
+      </div>
+
+      <div class="dashboard-stats">
+        <div class="stat-card">
+          <h3>Total Lost Items</h3>
+          <p id="totalLost">0</p>
+        </div>
+        <div class="stat-card">
+          <h3>Total Found Items</h3>
+          <p id="totalFound">0</p>
+        </div>
+        <div class="stat-card">
+          <h3>My Reported Items</h3>
+          <p id="myReported">0</p>
+        </div>
+      </div>
+
+      <div class="dashboard-recent-items">
+        <h2>Recent Lost Items</h2>
+        <table class="items-table">
+          <thead>
+            <tr>
+              <th>Item ID</th>
+              <th>Title</th>
+              <th>Description</th>
+              <th>Date Lost</th>
+              <th>Location</th>
+            </tr>
+          </thead>
+          <tbody id="recentLostItemsBody">
+            <tr><td colspan="5">Loading recent lost items...</td></tr>
+          </tbody>
+        </table>
+        <a href="reported_items.html?status=lost" class="view-all-link">View All Lost Items &raquo;</a>
+      </div>
+
+      <div class="dashboard-recent-items">
+        <h2>Recent Found Items</h2>
+        <table class="items-table">
+          <thead>
+            <tr>
+              <th>Item ID</th>
+              <th>Title</th>
+              <th>Description</th>
+              <th>Date Found</th>
+              <th>Location</th>
+            </tr>
+          </thead>
+          <tbody id="recentFoundItemsBody">
+            <tr><td colspan="5">Loading recent found items...</td></tr>
+          </tbody>
+        </table>
+        <a href="reported_items.html?status=found" class="view-all-link">View All Found Items &raquo;</a>
+      </div>
+    </section>
+  </main>
+
+  <script>
+    document.addEventListener('DOMContentLoaded', async () => {
+      const loggedInUserId = localStorage.getItem('loggedInUserId');
+      const loggedInUserName = localStorage.getItem('loggedInUserName');
+
+      if (!loggedInUserId || !loggedInUserName) {
+        alert('You are not logged in. Redirecting to login page.');
+        window.location.href = 'index.html';
+        return;
+      }
+
+      document.getElementById('userName').textContent = loggedInUserName;
+
+      async function fetchStat(endpoint, elementId) {
+        try {
+          const res = await fetch(`http://localhost:3000${endpoint}`);
+          if (!res.ok) throw new Error('Request failed');
+          const data = await res.json();
+          document.getElementById(elementId).textContent = data.count ?? 'N/A';
+        } catch (error) {
+          console.error(`Error fetching ${endpoint}:`, error);
+          document.getElementById(elementId).textContent = 'Error';
+        }
+      }
+
+      async function fetchAndDisplayItems(type, tbodyId) {
+        const tbody = document.getElementById(tbodyId);
+        tbody.innerHTML = `<tr><td colspan="5">Loading recent ${type.toLowerCase()} items...</td></tr>`;
+        try {
+          const endpoint = type === 'Lost' ? '/lost' : '/found';
+          const res = await fetch(`http://localhost:3000${endpoint}`);
+          if (!res.ok) throw new Error('Failed to fetch items');
+          const items = await res.json();
+
+          tbody.innerHTML = '';
+          const limited = items.slice(0, 5);
+          if (limited.length === 0) {
+            tbody.innerHTML = `<tr><td colspan="5" style="text-align:center;">No recent ${type.toLowerCase()} items found.</td></tr>`;
+            return;
+          }
+
+          limited.forEach(item => {
+            const date = new Date(item.DateLostFound).toLocaleDateString();
+            tbody.insertAdjacentHTML('beforeend', `
+              <tr>
+                <td>${item.ItemID}</td>
+                <td>${item.Title}</td>
+                <td>${item.Description.length > 50 ? item.Description.slice(0, 47) + '...' : item.Description}</td>
+                <td>${date}</td>
+                <td>${item.LocationName || 'N/A'}</td>
+              </tr>
+            `);
+          });
+        } catch (err) {
+          console.error(`Error loading ${type.toLowerCase()} items:`, err);
+          tbody.innerHTML = `<tr><td colspan="5" style="text-align:center;">Error loading items.</td></tr>`;
+        }
+      }
+
+      // Load stats
+      fetchStat('/stats/lost', 'totalLost');
+      fetchStat('/stats/found', 'totalFound');
+      fetchStat(`/stats/myreported/${loggedInUserId}`, 'myReported');
+
+      // Load items
+      fetchAndDisplayItems('Lost', 'recentLostItemsBody');
+      fetchAndDisplayItems('Found', 'recentFoundItemsBody');
+
+      // Logout
+      document.getElementById('logoutButton').addEventListener('click', () => {
+        localStorage.clear();
+        alert('Logged out successfully.');
+        window.location.href = 'index.html';
+      });
+    });
+  </script>
+</body>
+</html>

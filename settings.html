@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Settings - CPUT Lost & Found</title>
+  <link rel="stylesheet" href="../public/css/styles.css" />
+</head>
+
+<body>
+  <header>
+    <div class="menu-icon">&#9776;</div>
+    <h1 class="header-title">CPUT LOST & FOUND</h1>
+    <div class="search-profile">
+      <input type="text" placeholder="Search..." class="search-input" />
+      <div class="profile-icon">&#128100;</div>
+    </div>
+  </header>
+
+  <main class="dashboard-container">
+    <aside class="sidebar">
+      <nav>
+        <ul>
+          <li><a href="dashboard.html">Dashboard</a></li>
+          <li><a href="report_item.html">Report Lost/Found</a></li>
+          <li><a href="reported_items.html">Reported Items</a></li>
+          <li><a href="my_posts.html">My Posts</a></li>
+          <li><a href="settings.html" class="active">Settings</a></li>
+          <li><a href="#" id="logoutButton">Logout</a></li>
+        </ul>
+      </nav>
+    </aside>
+
+    <section class="dashboard-content">
+      <h2>User Settings</h2>
+
+      <div class="settings-card">
+        <h3>Profile Information</h3>
+        <form id="profileSettingsForm">
+          <div class="form-group">
+            <label for="settingName">Full Name:</label>
+            <input type="text" id="settingName" required />
+          </div>
+          <div class="form-group">
+            <label for="settingEmail">Email:</label>
+            <input type="email" id="settingEmail" readonly />
+            <small>Email cannot be changed.</small>
+          </div>
+          <div class="form-group">
+            <label for="settingPhoneNumber">Phone Number:</label>
+            <input
+              type="tel"
+              id="settingPhoneNumber"
+              placeholder="e.g., 0712345678"
+              pattern="[0-9]{10}"
+              maxlength="10"
+              required
+            />
+          </div>
+          <button type="submit" class="submit-button">Update Profile</button>
+        </form>
+      </div>
+
+      <div class="settings-card">
+        <h3>Change Password</h3>
+        <form id="passwordChangeForm">
+          <div class="form-group">
+            <label for="currentPassword">Current Password:</label>
+            <input type="password" id="currentPassword" required />
+          </div>
+          <div class="form-group">
+            <label for="newPassword">New Password:</label>
+            <input type="password" id="newPassword" required minlength="6" />
+          </div>
+          <div class="form-group">
+            <label for="confirmNewPassword">Confirm New Password:</label>
+            <input type="password" id="confirmNewPassword" required minlength="6" />
+          </div>
+          <button type="submit" class="submit-button">Change Password</button>
+        </form>
+      </div>
+
+      <div class="settings-card delete-account-section">
+        <h3>Account Management</h3>
+        <p>If you wish to deactivate your account, please contact support.</p>
+        <button type="button" class="delete-account-button">Deactivate Account (Contact Support)</button>
+      </div>
+    </section>
+  </main>
+
+  <script>
+    document.getElementById('logoutButton').addEventListener('click', () => {
+      localStorage.removeItem('loggedInUserId');
+      localStorage.removeItem('loggedInUserName');
+      alert('Logged out. Redirecting to login page.');
+      window.location.href = 'index.html';
+    });
+
+    document.addEventListener('DOMContentLoaded', () => {
+      const userId = localStorage.getItem('loggedInUserId');
+      const userName = localStorage.getItem('loggedInUserName');
+      const emailField = document.getElementById('settingEmail');
+      const nameField = document.getElementById('settingName');
+
+      if (!userId || !userName) {
+        alert('Not logged in. Redirecting to login page.');
+        window.location.href = 'index.html';
+        return;
+      }
+
+      nameField.value = userName;
+      emailField.value = userId.includes('@') ? userId : `${userId}@mycput.ac.za`;
+    });
+
+    document.getElementById('profileSettingsForm').addEventListener('submit', async (event) => {
+      event.preventDefault();
+      const name = document.getElementById('settingName').value.trim();
+      const phone = document.getElementById('settingPhoneNumber').value.trim();
+      const userId = localStorage.getItem('loggedInUserId');
+
+      if (!name || !phone) {
+        alert('Please fill in all fields.');
+        return;
+      }
+
+      try {
+        const response = await fetch(`http://localhost:3000/users/${userId}/profile`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ name, phone })
+        });
+
+        const result = await response.text();
+        if (response.ok) {
+          alert('✅ Profile updated!');
+          localStorage.setItem('loggedInUserName', name);
+        } else {
+          alert('❌ ' + result);
+        }
+      } catch (error) {
+        console.error('Error updating profile:', error);
+        alert('Error occurred while updating profile.');
+      }
+    });
+
+    document.getElementById('passwordChangeForm').addEventListener('submit', async (event) => {
+      event.preventDefault();
+      const current = document.getElementById('currentPassword').value;
+      const newPass = document.getElementById('newPassword').value;
+      const confirm = document.getElementById('confirmNewPassword').value;
+      const userId = localStorage.getItem('loggedInUserId');
+
+      if (newPass !== confirm) {
+        alert('❌ New passwords do not match.');
+        return;
+      }
+
+      try {
+        const response = await fetch(`http://localhost:3000/users/${userId}/password`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            currentPassword: current,
+            newPassword: newPass
+          })
+        });
+
+        const result = await response.text();
+        if (response.ok) {
+          alert('✅ Password updated successfully!');
+          document.getElementById('passwordChangeForm').reset();
+        } else {
+          alert('❌ ' + result);
+        }
+      } catch (error) {
+        console.error('Error changing password:', error);
+        alert('Error occurred while changing password.');
+      }
+    });
+
+    document.querySelector('.delete-account-button').addEventListener('click', () => {
+      alert('To deactivate your account, please contact CPUT IT Support via student IT portal.');
+    });
+  </script>
+</body>
+</html>
